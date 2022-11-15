@@ -1,5 +1,5 @@
 {
-  "name": "tool-genbin",
+  "name": "tool-genbin-esp8266",
   "version": "1.0.0",
   "description": "Espressif ESP8266 images creation",
   "keywords": [
