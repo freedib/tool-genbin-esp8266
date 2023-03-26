@@ -208,8 +208,7 @@ def combine_bin(section_name,dest_filename,use_section_offset_addr,need_chk):
         if need_chk:
             for loop in range(len(padding)):
                 chk_sum ^= ord(chr(padding[loop]))
-    print ('genbin.py: add section %s, size is %d, chk_sum=0x%s' %
-        (section_name, section_len, hex(chk_sum)))
+    # print ('genbin.py: add section %s, size is %d, chk_sum=0x%s' % (section_name, section_len, hex(chk_sum)))
 
 # compute the crc for the generated file
 def getFileCRC(_path): 
@@ -300,7 +299,7 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
  
     if user_bin:
         all_bin_crc = getFileCRC(flash_filename)
-        print ('genbin.py: crc32 before inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
+        # print ('genbin.py: crc32 before inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
         if sys.version_info.major >= 3:
             if all_bin_crc > 0x80000000:
                 all_bin_crc = 0x100000000 - all_bin_crc - 1
@@ -311,7 +310,7 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
                 all_bin_crc = abs(all_bin_crc) - 1
             else :
                 all_bin_crc = abs(all_bin_crc) + 1
-        print ('genbin.py: crc32 after inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
+        # print ('genbin.py: crc32 after inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
             
         # print (hex(all_bin_crc))
         bytes_all_bin_crc = struct.pack('<I',all_bin_crc)
