@@ -329,12 +329,24 @@ def get_val (arg, choices, default):
         return choices.index(default)
 
 
+def help_and_exit():
+    print("genbin.py, v1.0.0, Didier Bertrand, 2022")
+    print("Format:")
+    print("genbin.py 0 flash_mode flash_clk_div flash_map_size in_file.elf out_flash.bin out_irom.bin")
+    print("genbin.py [1|2] flash_mode flash_clk_div flash_map_size in_file.elf out_user[1|2].bin ") 
+    print("genbin.py 12 flash_mode flash_clk_div flash_map_size in_file.elf out_user1.bin out_user2.bin") 
+    print("Exemples:")
+    print("python genbin.py   0 dio 40m  4MB-c1 firmware.elf firmware.bin firmware.bin.irom0text.bin")
+    print("python genbin.py   1 dio 40m 16MB    firmware.elf user1.16384.new.9.bin") 
+    print("python genbin.py   2 dio 40m  4MB-c1 firmware.elf user2.4096.new.6.bin") 
+    print("python genbin.py   1 dio 40m 16MB    firmware.elf user1.16384.new.9.bin") 
+    print("python genbin.py  12 dio 40m 16MB    firmware.elf user1.bin user2.bin") 
+    exit(0)
+
+
 def main(): 
-     
     if len(sys.argv)<7 or len(sys.argv)>8:
-        print("Format: genbin 0 flash_mode flash_clk_div flash_map_size file.elf flash.bin irom.bin")
-        print("Format: genbin user_app flash_mode flash_clk_div flash_map_size file.elf user.bin ") 
-        exit(0)
+        help_and_exit()
  
     user_app = sys.argv[1]              # 1 or 2
     flash_mode = get_val (sys.argv[2], ['qio','qout','dio','dout'], 'qio')
@@ -366,6 +378,9 @@ def main():
         gen_appbin (1, flash_mode, flash_clk_div, flash_size_map, user1_filename)
         gen_appbin (2, flash_mode, flash_clk_div, flash_size_map, user2_filename)
     
+    else:
+        help_and_exit()
+        
     close_elf()
 
 if __name__=='__main__':
