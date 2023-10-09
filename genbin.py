@@ -26,6 +26,9 @@
 import os, sys, string, struct, zlib
 
 
+verbose = False
+
+
 ############ ELF extraction (from esptool-ck) ############
 
 # get string at offset sh_name in strings
@@ -46,7 +49,8 @@ def get_elf_section (e_shndx,e_shoff,e_shentsize):
     global cstrings
     # read one elf section
     offset = e_shoff + e_shndx*e_shentsize
-    # print(("Section %s: offset=%s(%s)") % (e_shndx,offset,hex(offset)), end=' ')
+    if verbose:
+        print(("Section %s: offset=%s(%s)") % (e_shndx,offset,hex(offset)), end=' ')
     elf_fd.seek(offset)
     data = elf_fd.read(40);
     # read section header
@@ -57,8 +61,9 @@ def get_elf_section (e_shndx,e_shoff,e_shentsize):
     sh_offset = elf_section[4]
     sh_size = elf_section[5]
     section_name = get_elf_string(sh_name,cstrings)
-    # print(("name=%s, sh_name=%s, sh_offset=%s, offset=%s, sh_addr=%s, sh_size=%s") %
-    #      (section_name,hex(sh_name),hex(sh_offset),hex(offset),hex(sh_addr),sh_size))
+    if verbose:
+        print(("name=%s, sh_name=%s, sh_offset=%s, offset=%s, sh_addr=%s, sh_size=%s") %
+              (section_name,hex(sh_name),hex(sh_offset),hex(offset),hex(sh_addr),sh_size))
     return ((section_name,sh_offset,sh_size,sh_addr))       # name, size, offset, address
 
 # extract a section by index from elf and return it
@@ -100,9 +105,10 @@ def search_elf_symbol (name):
         symbol = struct.Struct("<IIIBBH").unpack(symtab[entry:entry+16])
         symbol_name = get_elf_string(symbol[0],strtab)
         if (symbol_name==name):
-            # print(("symbol=%s, name=%s, st_name=%s, st_size=%s, st_value=%s, st_info=%s, st_other=%s, st_shndx=%s") %
-            #     (entry, get_elf_string(symbol[0],strtab), hex(symbol[0]),hex(symbol[1]),hex(symbol[2]),
-            #     hex(symbol[3]),hex(symbol[4]),hex(symbol[5])))
+            if verbose:
+                print(("symbol=%s, name=%s, st_name=%s, st_size=%s, st_value=%s, st_info=%s, st_other=%s, st_shndx=%s") %
+                    (entry, get_elf_string(symbol[0],strtab), hex(symbol[0]),hex(symbol[1]),hex(symbol[2]),
+                    hex(symbol[3]),hex(symbol[4]),hex(symbol[5])))
             return symbol
 
 # open elf file, extract main header, strings and sections indexes
@@ -116,7 +122,8 @@ def open_elf(elf_filename):
     
     elf_fd = open(elf_filename, "rb")
     elf_size = os.stat(elf_filename).st_size
-    # print(("Parsing: %s Size: %s(%s)") % (elf_filename,elf_size,hex(elf_size)))
+    if verbose:
+        print(("Parsing: %s Size: %s(%s)") % (elf_filename,elf_size,hex(elf_size)))
     # read elf header
     data = elf_fd.read(52);
     # see Elf32_Ehdr in esptool-ck for fields
@@ -125,8 +132,9 @@ def open_elf(elf_filename):
     e_shentsize = elf_header[14]
     e_shnum = elf_header[15]
     e_shstrndx = elf_header[16]
-    # print(("Sections: e_shnum=%s(%s) e_shoff=%s(%s) e_shentsize=%s(%s) e_shstrndx=%s(%s)") % 
-    #       (e_shnum,hex(e_shnum),e_shoff,hex(e_shoff),e_shentsize,hex(e_shentsize),e_shstrndx,hex(e_shstrndx)))
+    if verbose:
+        print(("Sections: e_shnum=%s(%s) e_shoff=%s(%s) e_shentsize=%s(%s) e_shstrndx=%s(%s)") % 
+              (e_shnum,hex(e_shnum),e_shoff,hex(e_shoff),e_shentsize,hex(e_shentsize),e_shstrndx,hex(e_shstrndx)))
     # get strings and sections
     cstrings = []
     sections = []
@@ -165,11 +173,13 @@ def write_file(filename,data,clear_file=False):
     if fp:
         fp.seek(0,os.SEEK_END)
         fp.write(data)
-        # print(('+++  %s(0x%s) @ %s(0x%s) -> ')%
-        #       (len(data), len(data),total_bytes, total_bytes),end=' ')
+        if verbose:
+            print(('+++  %s(0x%s) @ %s(0x%s) -> ')%
+                  (len(data), len(data),total_bytes, total_bytes),end=' ')
         total_bytes = total_bytes+len(data)
-        # print(('%s(0x%s) == %s(0x%s)')%
-         #      (total_bytes, total_bytes, fp.tell(), fp.tell()),end=' :: ')
+        if verbose:
+            print(('%s(0x%s) == %s(0x%s)')%
+                  (total_bytes, total_bytes, fp.tell(), fp.tell()),end=' :: ')
         fp.close()
 
     else:
@@ -192,8 +202,9 @@ def combine_bin(section_name,dest_filename,use_section_offset_addr,need_chk):
         section_len = (data_len + 15) & (~15)
     header = struct.pack('<II',start_offset_addr,section_len)
     write_file(dest_filename,header)
-    # print(('add header(%s) = %s (0x%s), %s (0x%s)')%(len(header), 
-    #     start_offset_addr, hex(start_offset_addr), section_len, hex(section_len)))
+    if verbose:
+        print(('add header(%s) = %s (0x%s), %s (0x%s)')%(len(header), start_offset_addr, hex(start_offset_addr),
+                                                         section_len, hex(section_len)))
 
     write_file(dest_filename,data_bin)
 
@@ -208,7 +219,8 @@ def combine_bin(section_name,dest_filename,use_section_offset_addr,need_chk):
         if need_chk:
             for loop in range(len(padding)):
                 chk_sum ^= ord(chr(padding[loop]))
-    # print ('genbin.py: add section %s, size is %d, chk_sum=0x%s' % (section_name, section_len, hex(chk_sum)))
+    if verbose:
+        print ('genbin.py: add section %s, size is %d, chk_sum=0x%s' % (section_name, section_len, hex(chk_sum)))
 
 # compute the crc for the generated file
 def getFileCRC(_path): 
@@ -256,15 +268,17 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
     entry_symbol = search_elf_symbol('call_user_start')
     if entry_symbol:
         entry_addr = entry_symbol[1]
-        # print("Entry addr = "+hex(entry_addr))
+        if verbose:
+            print("Entry addr = "+hex(entry_addr))
         
     if user_bin:        # add irom0ext to image
         header = struct.pack('<BBBBI',BIN_MAGIC_IROM,4,0,user_bin,entry_addr)
         sum_size = len(header)
         write_file(flash_filename,header,clear_file)
         clear_file = False
-        # print(('add header(%s) = %s %s %s %s %s')%(len(header), hex(BIN_MAGIC_IROM),
-        #         4, 0, user_bin, hex(entry_addr)))
+        if verbose:
+            print(('add header(%s) = %s %s %s %s %s')%(len(header), hex(BIN_MAGIC_IROM),
+                                                       4, 0, user_bin, hex(entry_addr)))
         # irom0.text.bin
         combine_bin('.irom0.text',flash_filename,False,False)
         
@@ -277,8 +291,9 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
     sum_size = len(header)
     write_file(flash_filename,header,clear_file)
     clear_file = False
-    # print(('add header(%s) = %s %s %s %s %s')%
-    #     (len(header), hex(BIN_MAGIC_FLASH), 3, hex(byte2), hex(byte3), hex(entry_addr)))
+    if verbose:
+        print(('add header(%s) = %s %s %s %s %s')%
+              (len(header), hex(BIN_MAGIC_FLASH), 3, hex(byte2), hex(byte3), hex(entry_addr)))
     combine_bin('.text',flash_filename,True,True)
     combine_bin('.data',flash_filename,True,True)
     combine_bin('.rodata',flash_filename,True,True)
@@ -292,14 +307,17 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
     if sum_size:
         padding = [0]*(sum_size)
         write_file(flash_filename,bytes(padding))
-        # print(('add padding(%s)')%(len(padding)))
+        if verbose:
+            print(('add padding(%s)')%(len(padding)))
         
     write_file(flash_filename,bytes([chk_sum&0xFF]))
-    # print(('add chk=%s')%(chk_sum&0xFF))
+    if verbose:
+        print(('add chk=%s')%(chk_sum&0xFF))
  
     if user_bin:
         all_bin_crc = getFileCRC(flash_filename)
-        # print ('genbin.py: crc32 before inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
+        if verbose:
+            print ('genbin.py: crc32 before inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
         if sys.version_info.major >= 3:
             if all_bin_crc > 0x80000000:
                 all_bin_crc = 0x100000000 - all_bin_crc - 1
@@ -310,12 +328,13 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
                 all_bin_crc = abs(all_bin_crc) - 1
             else :
                 all_bin_crc = abs(all_bin_crc) + 1
-        # print ('genbin.py: crc32 after inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
-            
-        # print (hex(all_bin_crc))
+        if verbose:
+            print ('genbin.py: crc32 after inversion = %s, %d' % (hex(all_bin_crc), all_bin_crc))
+            print (hex(all_bin_crc))
         bytes_all_bin_crc = struct.pack('<I',all_bin_crc)
         write_file(flash_filename,bytes_all_bin_crc)
-        # print("")
+        if verbose:
+            print("")
 
 
 ############ Main ############
@@ -344,11 +363,15 @@ def help_and_exit():
     exit(0)
 
 
-def main(): 
+def main():
+    global verbose
     if len(sys.argv)<7 or len(sys.argv)>8:
         help_and_exit()
  
-    user_app = sys.argv[1]              # 1 or 2
+    user_app = sys.argv[1]              # 0, 1, 2 or 12
+    if user_app[0]=='-':
+        verbose = True
+        user_app = user_app[1:]
     flash_mode = get_val (sys.argv[2], ['qio','qout','dio','dout'], 'qio')
     flash_clk_div = get_val (sys.argv[3], ['40m','26m','20m','80m'], '40m')
     flash_size_map = get_val (sys.argv[4], ['512KB','256KB','1MB','2MB','4MB','2MB-c1','4MB-c1','4MB-c2','8MB','16MB'], '4MB-c2')
