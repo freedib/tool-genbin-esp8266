@@ -50,7 +50,7 @@ def get_elf_section (e_shndx,e_shoff,e_shentsize):
     # read one elf section
     offset = e_shoff + e_shndx*e_shentsize
     if verbose:
-        print(("Section %s: offset=%s(%s)") % (e_shndx,offset,hex(offset)), end=' ')
+        print(("Section %2s: offset=%s(%s)") % (e_shndx,offset,hex(offset)), end=' ')
     elf_fd.seek(offset)
     data = elf_fd.read(40);
     # read section header
@@ -62,7 +62,7 @@ def get_elf_section (e_shndx,e_shoff,e_shentsize):
     sh_size = elf_section[5]
     section_name = get_elf_string(sh_name,cstrings)
     if verbose:
-        print(("name=%s, sh_name=%s, sh_offset=%s, offset=%s, sh_addr=%s, sh_size=%s") %
+        print(("name=%-15s, sh_name=%4s, sh_offset=%7s, offset=%7s, sh_addr=%10s, sh_size=%6s") %
               (section_name,hex(sh_name),hex(sh_offset),hex(offset),hex(sh_addr),sh_size))
     return ((section_name,sh_offset,sh_size,sh_addr))       # name, size, offset, address
 
@@ -174,12 +174,12 @@ def write_file(filename,data,clear_file=False):
         fp.seek(0,os.SEEK_END)
         fp.write(data)
         if verbose:
-            print(('+++  %s(0x%s) @ %s(0x%s) -> ')%
-                  (len(data), len(data),total_bytes, total_bytes),end=' ')
+            print(('+++  %8s(%8s) @ %8s(%8s) -> ')%
+                  (len(data), hex(len(data)), total_bytes, hex(total_bytes)), end=' ')
         total_bytes = total_bytes+len(data)
         if verbose:
-            print(('%s(0x%s) == %s(0x%s)')%
-                  (total_bytes, total_bytes, fp.tell(), fp.tell()),end=' :: ')
+            print(('%8s(%8s)')%
+                  (total_bytes, hex(total_bytes)), end=' :: ')
         fp.close()
 
     else:
@@ -203,10 +203,12 @@ def combine_bin(section_name,dest_filename,use_section_offset_addr,need_chk):
     header = struct.pack('<II',start_offset_addr,section_len)
     write_file(dest_filename,header)
     if verbose:
-        print(('add header(%s) = %s (0x%s), %s (0x%s)')%(len(header), start_offset_addr, hex(start_offset_addr),
+        print(('add header1(%s) = %s (0x%s), %s (0x%s)')%(len(header), start_offset_addr, hex(start_offset_addr),
                                                          section_len, hex(section_len)))
 
     write_file(dest_filename,data_bin)
+    if verbose:
+        print ('add section %s, size is %d, chk_sum=0x%s' % (section_name, section_len, hex(chk_sum)))
 
     if need_chk:
         for loop in range(len(data_bin)):
@@ -215,12 +217,11 @@ def combine_bin(section_name,dest_filename,use_section_offset_addr,need_chk):
     if padding_len:         # padding
         padding = [0]*padding_len
         write_file(dest_filename,bytes(padding))
-        # print(('add padding(%s)')%(len(bytes(padding))))
+        if verbose:
+            print(('add padding(%s)')%(len(bytes(padding))))
         if need_chk:
             for loop in range(len(padding)):
                 chk_sum ^= ord(chr(padding[loop]))
-    if verbose:
-        print ('genbin.py: add section %s, size is %d, chk_sum=0x%s' % (section_name, section_len, hex(chk_sum)))
 
 # compute the crc for the generated file
 def getFileCRC(_path): 
@@ -277,7 +278,7 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
         write_file(flash_filename,header,clear_file)
         clear_file = False
         if verbose:
-            print(('add header(%s) = %s %s %s %s %s')%(len(header), hex(BIN_MAGIC_IROM),
+            print(('add header2(%s) = %s %s %s %s %s')%(len(header), hex(BIN_MAGIC_IROM),
                                                        4, 0, user_bin, hex(entry_addr)))
         # irom0.text.bin
         combine_bin('.irom0.text',flash_filename,False,False)
@@ -292,7 +293,7 @@ def gen_appbin (user_bin, flash_mode, flash_clk_div, flash_size_map, flash_filen
     write_file(flash_filename,header,clear_file)
     clear_file = False
     if verbose:
-        print(('add header(%s) = %s %s %s %s %s')%
+        print(('add header3(%s) = %s %s %s %s %s')%
               (len(header), hex(BIN_MAGIC_FLASH), 3, hex(byte2), hex(byte3), hex(entry_addr)))
     combine_bin('.text',flash_filename,True,True)
     combine_bin('.data',flash_filename,True,True)
@@ -382,21 +383,21 @@ def main():
     if len(sys.argv)==8 and user_app=='0':
         flash_filename = sys.argv[6]        # eagle.flash.bin
         iron_filename = sys.argv[7]         # eagle.irom0text.bin
-        print(("genbin.py: %s --> create %s + %s") %
-              (elf_filename, flash_filename, iron_filename))
+        print(("Create %s and %s from %s") %
+              (flash_filename, iron_filename, elf_filename))
 
         gen_appbin (0, flash_mode, flash_clk_div, flash_size_map, flash_filename, iron_filename)
         
     elif len(sys.argv)==7 and (user_app=='1' or user_app=='2'):
         user_file = sys.argv[6]        # user1.bin or user2.bin
-        print(("genbin.py: create %s from %s") %
+        print(("Create %s from %s") %
               (user_file, elf_filename))
         gen_appbin (int(user_app), flash_mode, flash_clk_div, flash_size_map, user_file)
 
     elif len(sys.argv)==8 and (user_app=='12'):     # generate user1 and user2 file 
         user1_filename = sys.argv[6]        # user1.bin or user2.bin
         user2_filename = sys.argv[7]        # user1.bin or user2.bin
-        print(("genbin.py: create %s and %s from %s") %
+        print(("Create %s and %s from %s") %
               (user1_filename, user2_filename, elf_filename))
         gen_appbin (1, flash_mode, flash_clk_div, flash_size_map, user1_filename)
         gen_appbin (2, flash_mode, flash_clk_div, flash_size_map, user2_filename)
